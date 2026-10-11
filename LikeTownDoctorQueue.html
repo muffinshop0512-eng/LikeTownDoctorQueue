@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="th" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดคิวคุณหมอเกม - Game Doctor Queue</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        neonOrange: '#ff7700',
+                        neonPurple: '#9333ea',
+                        darkBg: '#09090b',
+                        cardBg: 'rgba(24, 24, 27, 0.75)'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Prompt & Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Prompt', 'Inter', sans-serif;
+        }
+        /* Background Watermark */
+        .watermark-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: url('https://placehold.co/1200x800/111/ff7700?text=LIKE+TOWN+DOCTOR'); /* Fallback or user uploaded image reference */
+            background-size: cover;
+            background-position: center;
+            opacity: 0.12;
+            z-index: -1;
+            pointer-events: none;
+            filter: blur(4px) saturate(1.5);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #18181b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ff7700;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(255, 119, 0, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(255, 119, 0, 0.8); }
+        }
+        .pulse-active {
+            animation: pulseGlow 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-darkBg text-zinc-100 min-h-screen relative overflow-x-hidden selection:bg-orange-500 selection:text-white">
+
+    <!-- Watermark Background using the uploaded image URL -->
+    <div class="watermark-bg" id="watermarkBg" style="background-image: url('https://hebbkx1anhila5yf.public.blob.vercel-storage.com/input_file_0.png-N8Zq9u3hXfB7m2kL1p4s5t6u7v8w9x.jpeg');"></div>
+
+    <!-- Ambient glowing lights -->
+    <div class="absolute top-0 left-1/4 w-96 h-96 bg-purple-900/25 rounded-full blur-3xl pointer-events-none -z-10"></div>
+    <div class="absolute bottom-0 right-1/4 w-96 h-96 bg-orange-600/20 rounded-full blur-3xl pointer-events-none -z-10"></div>
+
+    <!-- Header -->
+    <header class="border-b border-zinc-800/80 backdrop-blur-md bg-zinc-950/60 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-purple-600 flex items-center justify-center shadow-lg shadow-orange-500/30">
+                    <i class="fa-solid fa-stethoscope text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold bg-gradient-to-r from-orange-400 via-amber-300 to-purple-400 bg-clip-text text-transparent">
+                        Game Doctor Queue System
+                    </h1>
+                    <p class="text-xs text-zinc-400">ระบบจัดการคิวคุณหมอในเกม • Like Town Medical Hub</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="openAddModal()" class="px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-medium rounded-xl shadow-lg shadow-orange-600/30 transition-all duration-200 flex items-center space-x-2 text-sm">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span class="hidden sm:inline">เพิ่มคุณหมอเข้าคิว</span>
+                </button>
+                <button onclick="resetAllQueues()" class="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl transition-all duration-200 text-sm" title="รีเซ็ตสถานะทั้งหมด">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+        <!-- Statistics & Status Summary Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+            <div onclick="filterByStatus('active')" class="cursor-pointer bg-zinc-900/80 backdrop-blur-md border border-orange-500/30 hover:border-orange-500 p-4 rounded-2xl transition-all duration-200 group">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium text-orange-400">กำลังทำเคส</span>
+                    <span class="w-8 h-8 rounded-lg bg-orange-500/20 text-orange-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-user-doctor"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold text-white" id="count-active">0</div>
+            </div>
+
+            <div onclick="filterByStatus('next')" class="cursor-pointer bg-zinc-900/80 backdrop-blur-md border border-amber-500/30 hover:border-amber-500 p-4 rounded-2xl transition-all duration-200 group">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium text-amber-400">รอเคสถัดไป</span>
+                    <span class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold text-white" id="count-next">0</div>
+            </div>
+
+            <div onclick="filterByStatus('waiting')" class="cursor-pointer bg-zinc-900/80 backdrop-blur-md border border-blue-500/30 hover:border-blue-500 p-4 rounded-2xl transition-all duration-200 group">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium text-blue-400">ยังไม่ถึงเคส</span>
+                    <span class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-clock"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold text-white" id="count-waiting">0</div>
+            </div>
+
+            <div onclick="filterByStatus('break')" class="cursor-pointer bg-zinc-900/80 backdrop-blur-md border border-purple-500/30 hover:border-purple-500 p-4 rounded-2xl transition-all duration-200 group">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium text-purple-400">พัก/เหม่อ <15น.</span>
+                    <span class="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-mug-hot"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold text-white" id="count-break">0</div>
+            </div>
+
+            <div onclick="filterByStatus('none')" class="cursor-pointer bg-zinc-900/80 backdrop-blur-md border border-zinc-700 hover:border-zinc-500 p-4 rounded-2xl transition-all duration-200 group col-span-2 sm:col-span-1">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-medium text-zinc-400">ยังไม่มีเคส</span>
+                    <span class="w-8 h-8 rounded-lg bg-zinc-700/30 text-zinc-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-ban"></i>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold text-white" id="count-none">0</div>
+            </div>
+        </div>
+
+        <!-- Controls & Filter bar -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800">
+            <div class="flex items-center space-x-2 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
+                <button onclick="filterByStatus('all')" id="filter-all" class="px-3.5 py-1.5 rounded-xl text-xs font-medium bg-orange-600 text-white transition-all shadow-sm whitespace-nowrap">ทั้งหมด</button>
+                <button onclick="filterByStatus('active')" id="filter-active" class="px-3.5 py-1.5 rounded-xl text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-all whitespace-nowrap">กำลังทำเคส</button>
+                <button onclick="filterByStatus('next')" id="filter-next" class="px-3.5 py-1.5 rounded-xl text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-all whitespace-nowrap">รอเคสถัดไป</button>
+                <button onclick="filterByStatus('waiting')" id="filter-waiting" class="px-3.5 py-1.5 rounded-xl text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-all whitespace-nowrap">ยังไม่ถึงเคส</button>
+                <button onclick="filterByStatus('break')" id="filter-break" class="px-3.5 py-1.5 rounded-xl text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-all whitespace-nowrap">พัก/เหม่อ</button>
+                <button onclick="filterByStatus('none')" id="filter-none" class="px-3.5 py-1.5 rounded-xl text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-all whitespace-nowrap">ยังไม่มีเคส</button>
+            </div>
+            <div class="relative w-full sm:w-72">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-zinc-500">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </span>
+                <input type="text" id="searchInput" oninput="renderQueue()" placeholder="ค้นหาชื่อคุณหมอ หรือ แผนก..." class="w-full pl-9 pr-4 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-orange-500 transition-all">
+            </div>
+        </div>
+
+        <!-- Queue List Container -->
+        <div id="queueContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Dynamic Cards injected by JavaScript -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden text-center py-16 bg-zinc-900/30 rounded-2xl border border-dashed border-zinc-800 mt-4">
+            <div class="w-16 h-16 bg-zinc-800/50 rounded-full flex items-center justify-center mx-auto mb-4 text-zinc-500 text-2xl">
+                <i class="fa-solid fa-user-doctor"></i>
+            </div>
+            <h3 class="text-lg font-medium text-zinc-300">ไม่พบรายชื่อคุณหมอในระบบ</h3>
+            <p class="text-sm text-zinc-500 mt-1">ลองเปลี่ยนตัวกรอง หรือเพิ่มคุณหมอใหม่เข้าสู่คิว</p>
+            <button onclick="openAddModal()" class="mt-4 px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-sm font-medium transition-all">
+                เพิ่มคุณหมอคนแรก
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Add / Edit Doctor Modal -->
+    <div id="doctorModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-zinc-900 border border-zinc-800 w-full max-w-md mx-4 rounded-2xl p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="modalContent">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-zinc-800">
+                <h3 id="modalTitle" class="text-lg font-bold text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-user-doctor text-orange-500"></i>
+                    <span>เพิ่มคุณหมอเข้าคิว</span>
+                </h3>
+                <button onclick="closeModal()" class="w-8 h-8 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center transition-all">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <form id="doctorForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                <input type="hidden" id="doctorId">
+                <div>
+                    <label class="block text-xs font-medium text-zinc-400 mb-1">ชื่อคุณหมอ / Call Sign *</label>
+                    <input type="text" id="doctorName" required placeholder="เช่น นพ.สมชาย ใจดี หรือ Dr.Max" class="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-orange-500 transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-zinc-400 mb-1">แผนก / ความเชี่ยวชาญ *</label>
+                    <input type="text" id="doctorSpecialty" required placeholder="เช่น ศัลยกรรมอุบัติเหตุ, แพทย์ทั่วไป, ศัลยกรรมประสาท" class="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-orange-500 transition-all">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-zinc-400 mb-1">สถานะคิวเริ่มต้น</label>
+                    <select id="doctorStatus" class="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-zinc-100 focus:outline-none focus:border-orange-500 transition-all">
+                        <option value="active">🔴 กำลังทำเคส (Current Case)</option>
+                        <option value="next">🟡 รอเคสถัดไป (Waiting for Next Case)</option>
+                        <option value="waiting">🔵 ยังไม่ถึงเคส (Not Yet Your Turn)</option>
+                        <option value="break">🟣 พัก/เหม่อไม่เกิน 15 นาที (Break / Zoning Out)</option>
+                        <option value="none" selected>⚪ ยังไม่มีเคส (No Case Yet)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-zinc-400 mb-1">หมายเหตุเพิ่มเติม (ถ้ามี)</label>
+                    <input type="text" id="doctorNote" placeholder="เช่น เคสฉุกเฉิน / กำลังสตรีมอยู่ / รอผลตรวจ" class="w-full px-3.5 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-orange-500 transition-all">
+                </div>
+
+                <div class="flex justify-end space-x-3 pt-4 border-t border-zinc-800">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-sm font-medium transition-all">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" class="px-5 py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white rounded-xl text-sm font-medium shadow-lg shadow-orange-600/30 transition-all">
+                        บันทึกข้อมูล
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Initial mock data for doctors in Like Town game
+        let doctors = [
+            {
+                id: 'doc-1',
+                name: 'นพ.บอย สกายไลน์ (Dr.Boy)',
+                specialty: 'ศัลยกรรมอุบัติเหตุ & ศัลยกรรมทั่วไป',
+                status: 'active',
+                note: 'เคสผ่าตัดด่วนห้อง OR 1',
+                updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            },
+            {
+                id: 'doc-2',
+                name: 'พญ.มินมิน น่ารัก (Dr.Min)',
+                specialty: 'จิตเวช & แพทย์ทั่วไป',
+                status: 'next',
+                note: 'เตรียมรับเคสถัดไปโซนตรวจนอก',
+                updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            },
+            {
+                id: 'doc-3',
+                name: 'นพ.เรน ทูบี (Dr.Rain)',
+                specialty: 'ศัลยกรรมประสาทและสมอง',
+                status: 'waiting',
+                note: 'สแตนด์บายรอวิทยุเรียก',
+                updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            },
+            {
+                id: 'doc-4',
+                name: 'พญ.โซล เมท (Dr.Soul)',
+                specialty: 'กุมารแพทย์ & ฉุกเฉิน',
+                status: 'break',
+                note: 'พักทานกาแฟ 10 นาที',
+                updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            },
+            {
+                id: 'doc-5',
+                name: 'นพ.ไนท์ วอล์คเกอร์ (Dr.Night)',
+                specialty: 'ศัลยกรรมกระดูกและข้อ',
+                status: 'none',
+                note: 'ยังไม่เข้าเวร / เคลียร์เคสเสร็จแล้ว',
+                updatedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            }
+        ];
+
+        let currentFilter = 'all';
+
+        // Status configuration dictionary
+        const statusConfig = {
+            active: {
+                label: 'กำลังทำเคส',
+                color: 'bg-orange-500/20 text-orange-400 border-orange-500/50',
+                dotColor: 'bg-orange-500 animate-pulse',
+                icon: 'fa-user-doctor',
+                badgeBg: 'bg-orange-500/10 text-orange-400 border border-orange-500/30'
+            },
+            next: {
+                label: 'รอเคสถัดไป',
+                color: 'bg-amber-500/20 text-amber-400 border-amber-500/50',
+                dotColor: 'bg-amber-400',
+                icon: 'fa-hourglass-half',
+                badgeBg: 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+            },
+            waiting: {
+                label: 'ยังไม่ถึงเคส',
+                color: 'bg-blue-500/20 text-blue-400 border-blue-500/50',
+                dotColor: 'bg-blue-400',
+                icon: 'fa-clock',
+                badgeBg: 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+            },
+            break: {
+                label: 'พัก/เหม่อ <15น.',
+                color: 'bg-purple-500/20 text-purple-400 border-purple-500/50',
+                dotColor: 'bg-purple-400',
+                icon: 'fa-mug-hot',
+                badgeBg: 'bg-purple-500/10 text-purple-400 border border-purple-500/30'
+            },
+            none: {
+                label: 'ยังไม่มีเคส',
+                color: 'bg-zinc-800 text-zinc-400 border-zinc-700',
+                dotColor: 'bg-zinc-500',
+                icon: 'fa-ban',
+                badgeBg: 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+            }
+        };
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            renderQueue();
+            updateStats();
+        });
+
+        function renderQueue() {
+            const container = document.getElementById('queueContainer');
+            const emptyState = document.getElementById('emptyState');
+            const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+
+            // Filter doctors
+            const filtered = doctors.filter(doc => {
+                const matchesFilter = currentFilter === 'all' || doc.status === currentFilter;
+                const matchesSearch = doc.name.toLowerCase().includes(searchQuery) || 
+                                      doc.specialty.toLowerCase().includes(searchQuery) ||
+                                      (doc.note && doc.note.toLowerCase().includes(searchQuery));
+                return matchesFilter && matchesSearch;
+            });
+
+            updateStats();
+
+            if (filtered.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            container.innerHTML = filtered.map(doc => {
+                const config = statusConfig[doc.status];
+                const isActive = doc.status === 'active';
+
+                return `
+                    <div class="bg-zinc-900/80 backdrop-blur-md border ${isActive ? 'border-orange-500/80 shadow-lg shadow-orange-500/10 pulse-active' : 'border-zinc-800/80 hover:border-zinc-700'} rounded-2xl p-5 transition-all duration-300 flex flex-col justify-between group">
+                        <div>
+                            <!-- Card Header -->
+                            <div class="flex items-start justify-between gap-2 mb-3">
+                                <div>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.badgeBg} mb-2">
+                                        <span class="w-1.5 h-1.5 rounded-full ${config.dotColor} mr-1.5"></span>
+                                        ${config.label}
+                                    </span>
+                                    <h3 class="text-base font-bold text-white group-hover:text-orange-400 transition-colors">${escapeHtml(doc.name)}</h3>
+                                </div>
+                                <div class="flex items-center space-x-1 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                    <button onclick="openEditModal('${doc.id}')" class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center transition-all" title="แก้ไขข้อมูล">
+                                        <i class="fa-solid fa-pen text-xs"></i>
+                                    </button>
+                                    <button onclick="deleteDoctor('${doc.id}')" class="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-red-950/50 text-zinc-300 hover:text-red-400 flex items-center justify-center transition-all" title="ลบออกจากคิว">
+                                        <i class="fa-solid fa-trash text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Specialty -->
+                            <p class="text-xs text-zinc-400 mb-2 flex items-center">
+                                <i class="fa-solid fa-hospital-user mr-1.5 text-orange-500/80"></i>
+                                ${escapeHtml(doc.specialty)}
+                            </p>
+
+                            <!-- Note / Current Case info -->
+                            ${doc.note ? `
+                                <div class="bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-2.5 text-xs text-zinc-300 mb-4 flex items-start space-x-2">
+                                    <i class="fa-solid fa-note-sticky text-amber-400 mt-0.5 flex-shrink-0"></i>
+                                    <span class="break-words">${escapeHtml(doc.note)}</span>
+                                </div>
+                            ` : '<div class="mb-4"></div>'}
+                        </div>
+
+                        <!-- Card Footer & Quick Status Switcher -->
+                        <div class="pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs">
+                            <span class="text-zinc-500 text-[11px]">อัปเดต: ${doc.updatedAt}</span>
+                            
+                            <!-- Status Selector Dropdown -->
+                            <div class="relative">
+                                <select onchange="quickChangeStatus('${doc.id}', this.value)" class="bg-zinc-950 border border-zinc-700/80 text-zinc-200 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-orange-500 cursor-pointer">
+                                    <option value="active" ${doc.status === 'active' ? 'selected' : ''}>🔴 กำลังทำเคส</option>
+                                    <option value="next" ${doc.status === 'next' ? 'selected' : ''}>🟡 รอเคสถัดไป</option>
+                                    <option value="waiting" ${doc.status === 'waiting' ? 'selected' : ''}>🔵 ยังไม่ถึงเคส</option>
+                                    <option value="break" ${doc.status === 'break' ? 'selected' : ''}>🟣 พัก/เหม่อ <15น.</option>
+                                    <option value="none" ${doc.status === 'none' ? 'selected' : ''}>⚪ ยังไม่มีเคส</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateStats() {
+            const counts = {
+                active: 0,
+                next: 0,
+                waiting: 0,
+                break: 0,
+                none: 0
+            };
+
+            doctors.forEach(doc => {
+                if (counts[doc.status] !== undefined) {
+                    counts[doc.status]++;
+                }
+            });
+
+            document.getElementById('count-active').innerText = counts.active;
+            document.getElementById('count-next').innerText = counts.next;
+            document.getElementById('count-waiting').innerText = counts.waiting;
+            document.getElementById('count-break').innerText = counts.break;
+            document.getElementById('count-none').innerText = counts.none;
+        }
+
+        function filterByStatus(status) {
+            currentFilter = status;
+            
+            // Highlight active button
+            const buttons = ['all', 'active', 'next', 'waiting', 'break', 'none'];
+            buttons.forEach(b => {
+                const btn = document.getElementById(`filter-${b}`);
+                if (btn) {
+                    if (b === status) {
+                        btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-medium bg-orange-600 text-white transition-all shadow-sm whitespace-nowrap';
+                    } else {
+                        btn.className = 'px-3.5 py-1.5 rounded-xl text-xs font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-all whitespace-nowrap';
+                    }
+                }
+            });
+
+            renderQueue();
+        }
+
+        function openAddModal() {
+            document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-user-doctor text-orange-500 mr-2"></i><span>เพิ่มคุณหมอเข้าคิว</span>';
+            document.getElementById('doctorId').value = '';
+            document.getElementById('doctorName').value = '';
+            document.getElementById('doctorSpecialty').value = '';
+            document.getElementById('doctorStatus').value = 'none';
+            document.getElementById('doctorNote').value = '';
+            
+            const modal = document.getElementById('doctorModal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                document.getElementById('modalContent').classList.remove('scale-95');
+            }, 10);
+        }
+
+        function openEditModal(id) {
+            const doc = doctors.find(d => d.id === id);
+            if (!doc) return;
+
+            document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-orange-500 mr-2"></i><span>แก้ไขข้อมูลคุณหมอ</span>';
+            document.getElementById('doctorId').value = doc.id;
+            document.getElementById('doctorName').value = doc.name;
+            document.getElementById('doctorSpecialty').value = doc.specialty;
+            document.getElementById('doctorStatus').value = doc.status;
+            document.getElementById('doctorNote').value = doc.note || '';
+
+            const modal = document.getElementById('doctorModal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                document.getElementById('modalContent').classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('doctorModal');
+            modal.classList.add('opacity-0');
+            document.getElementById('modalContent').classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('doctorId').value;
+            const name = document.getElementById('doctorName').value;
+            const specialty = document.getElementById('doctorSpecialty').value;
+            const status = document.getElementById('doctorStatus').value;
+            const note = document.getElementById('doctorNote').value;
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            if (id) {
+                // Edit existing
+                const index = doctors.findIndex(d => d.id === id);
+                if (index !== -1) {
+                    doctors[index] = {
+                        ...doctors[index],
+                        name,
+                        specialty,
+                        status,
+                        note,
+                        updatedAt: timeStr
+                    };
+                }
+            } else {
+                // Add new
+                const newDoc = {
+                    id: 'doc-' + Date.now(),
+                    name,
+                    specialty,
+                    status,
+                    note,
+                    updatedAt: timeStr
+                };
+                doctors.unshift(newDoc);
+            }
+
+            closeModal();
+            renderQueue();
+        }
+
+        function quickChangeStatus(id, newStatus) {
+            const doc = doctors.find(d => d.id === id);
+            if (doc) {
+                doc.status = newStatus;
+                doc.updatedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                renderQueue();
+            }
+        }
+
+        function deleteDoctor(id) {
+            if (confirm('คุณต้องการลบคุณหมอนี้ออกจากระบบคิวใช่หรือไม่?')) {
+                doctors = doctors.filter(d => d.id !== id);
+                renderQueue();
+            }
+        }
+
+        function resetAllQueues() {
+            if (confirm('ต้องการรีเซ็ตสถานะคุณหมอทั้งหมดเป็น "ยังไม่มีเคส" หรือไม่?')) {
+                doctors.forEach(d => {
+                    d.status = 'none';
+                    d.note = '';
+                    d.updatedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                });
+                renderQueue();
+            }
+        }
+
+        // Helper to prevent XSS
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;")
+                      .replace(/</g, "&lt;")
+                      .replace(>g, "&gt;")
+                      .replace(/"/g, "&quot;")
+                      .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
